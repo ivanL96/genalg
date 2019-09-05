@@ -43,7 +43,7 @@ import model
 
 def compute(weights, target=None):
     # return sum([abs(self.alphabet.find(self.target[i]) - self.alphabet.find(c)) for i,c in enumerate(weights)]) / len(self.target)**2
-    return np.sum(np.array([abs(target[i] - w) for i, w in np.ndenumerate(weights)])) / len(target)**2
+    return np.sum(np.array([abs(target[i] - weights[i]) for i in range(len(weights)) ])) / len(target)**2
 
 
 alphabet = ' йцукенгшщзхъфывапролджэячсмитьбю0123456789!?+=-)(,.'
@@ -54,10 +54,10 @@ target = '''тест алгоритма ооочень длинным сообщ
 
 bot_len = len(target)
 nbots = 20000
-nsurv = 5000
+nsurv = 10000
 nnew = nbots - nsurv
 mut = 0.2
-nparents = min(500, nsurv)
+nparents = min(1000, nsurv)
 epochs = 10
 
 gen = model.GeneticModel(nbots, bot_len, nsurv, nnew, 
@@ -68,6 +68,6 @@ gen.add_loss(compute)
 # gen.mutate_nsurv()
 # gen.mutate_nnew()
 # gen.mutate_nparents()
-gen.add_stopping('best', 0)
+# gen.add_stopping('best', 0)
 
-gen.run(epochs=epochs, n=1, verbose=1)
+gen.run(epochs=epochs, n=1, verbose=0)

@@ -50,6 +50,7 @@ class GeneticModel(Mutation):
 
         # bot params
         self.weight_sample = None
+        self.weight_sample_enum = None
         self.bot_len = bot_len
         self.reserved_weights = reserved_weights
         
@@ -114,11 +115,14 @@ class GeneticModel(Mutation):
         """weight_type can be str, int, float"""
         if weight_type == int:
             self.weight_sample = [random.randint, weight_range]
+            self.weight_sample_enum = [0, weight_range, 0]
         elif weight_type == float:
             self.weight_sample = [np.random.uniform, weight_range]
+            self.weight_sample_enum = [1, weight_range, 0]
         elif weight_type == str:
             if self.alphabet is not None:
                 self.weight_sample = [random.sample, self.alphabet, 1]
+                self.weight_sample_enum = [2, self.alphabet, 1]        
             else:
                 raise ValueError('Weight type specified as string, but the alphabet not set.')
         else:
@@ -144,9 +148,6 @@ class GeneticModel(Mutation):
             args = args[0]
         sample = rand_func(*args)
         sample = sample[0] if type(sample) == list else sample
-        
-#         if isinstance(sample, (float, int)):
-#             sample += self.epsilon 
         return sample
         
     def __get_loss(self, bot):
@@ -192,7 +193,8 @@ class GeneticModel(Mutation):
             raise ValueError('Bot weights must be configured before creating the population. Use gen.configure_bot().')
         
         # creating 1D population
-        [self.population.extend(self.random_bot()) for _ in range(self.nbots * n)]
+        # [self.population.extend(self.random_bot()) for _ in range(self.nbots * n)]
+        self.population = [self.random_bot() for _ in range(self.nbots * n)]
 
         for it in range(epochs):
             start = time.time()
@@ -201,44 +203,55 @@ class GeneticModel(Mutation):
             self.nnew += n
             self.nparents += p
             
-#             gen_mutation = []
-
-            # vals = [self.loss_function( bot, self.target ) for bot in self.population]
-            vals = backend.compute_loss(self.loss_function, self.population, self.bot_len, self.target)
-
-#                 gen_mutation.append(self.__get_bot(bot, reserved=-1))
+            # gen_mutation = []
+            loss_time = time.time()
+            vals = [self.loss_function( bot, self.target ) for bot in self.population]
+            print('loss___', time.time()-loss_time)
+            # vals = backend.compute_loss(self.loss_function, self.population, self.bot_len, self.target)
+            # gen_mutation.append(self.__get_bot(bot, reserved=-1))
 
             # the lower score is the best
+            sloss_time = time.time()
             sorted_vals = sorted(vals)
+            print('sloss__', time.time()-sloss_time)
 
             # visualization
-            self.history['best'].append(sorted_vals[0])
-            self.history['mean'].append(np.mean(vals))
-            self.history['best_worst'].append(abs(sorted_vals[0]-sorted_vals[-1]))
-#             self.history['pstdev'].append(statistics.pstdev(sorted_vals))
-#             self.history['pvariance'].append(statistics.pvariance(sorted_vals))
-#             self.history['stdev'].append(statistics.stdev(sorted_vals))
-#             self.history['variance'].append(statistics.variance(sorted_vals))
-#             self.history['gen_mut_history'].append(np.mean(gen_mutation))
+            # self.history['best'].append(sorted_vals[0])
+            # self.history['mean'].append(np.mean(vals))
+            # self.history['best_worst'].append(abs(sorted_vals[0]-sorted_vals[-1]))
+            
+            # self.history['pstdev'].append(statistics.pstdev(sorted_vals))
+            # self.history['pvariance'].append(statistics.pvariance(sorted_vals))
+            # self.history['stdev'].append(statistics.stdev(sorted_vals))
+            # self.history['variance'].append(statistics.variance(sorted_vals))
+            # self.history['gen_mut_history'].append(np.mean(gen_mutation))
 
             # get surv bots
+            npop_time = time.time()
             self.next_population = [ self.population[vals.index(sorted_vals[i])] for i in range(self.nsurv) ]
-            # print(self.population[:10])
+            print('npop___', time.time()-npop_time)
             # self.next_population = backend.create_next_population(self.nsurv, vals, sorted_vals, self.population)
 
-            
+            worst_bot = self.next_population[-1] # for printing
+
+            # EXPENSIVE
+            app_time = time.time()
+            # self.next_population += [self.__new_bot() for i in range(self.nnew)]
+            self.next_population += [backend.create_new_bot(
+                self.nnew, self.nsurv, self.nparents, self.bot_len, self.next_population, self.mut, self.weight_sample_enum
+            ) for i in range(self.nnew)]
+            self.population = self.next_population
+            print('anpop__', time.time()-app_time)
+
+
             et = round(time.time()-start, 3)
             times.append(et)
             if verbose == 1:
                 print(it, et, 
-                      self.__bot2text(self.next_population[0]), self.__bot2text(self.next_population[-1]))
-            
+                    self.__bot2text(self.next_population[0]), self.__bot2text(worst_bot))
             
             if any(self._check_stoppings()):
                 break
-
-            self.next_population += [self.__new_bot() for i in range(self.nnew)]
-            self.population = self.next_population
             
             # population mean mutations
 #             self.history['mut_history'].append(np.mean(self.history['pop_mutations']))
