@@ -36,14 +36,14 @@ import model
 #         return self
 
 
-class AlphaLoss(loss.GeneticBaseLoss):
+# class AlphaLoss(loss.GeneticBaseLoss):
     # def __init__(self, alphabet, **kwargs):
     #     self.alphabet = alphabet
     #     super().__init__(**kwargs)
 
-    def compute(self, weights):
-        # return sum([abs(self.alphabet.find(self.target[i]) - self.alphabet.find(c)) for i,c in enumerate(weights)]) / len(self.target)**2
-        return sum([abs(self.target[i] - w) for i, w in enumerate(weights)]) / len(self.target)**2
+def compute(weights, target=None):
+    # return sum([abs(self.alphabet.find(self.target[i]) - self.alphabet.find(c)) for i,c in enumerate(weights)]) / len(self.target)**2
+    return np.sum(np.array([abs(target[i] - w) for i, w in np.ndenumerate(weights)])) / len(target)**2
 
 
 alphabet = ' йцукенгшщзхъфывапролджэячсмитьбю0123456789!?+=-)(,.'
@@ -58,13 +58,13 @@ nsurv = 5000
 nnew = nbots - nsurv
 mut = 0.2
 nparents = min(500, nsurv)
-epochs = 500
+epochs = 10
 
 gen = model.GeneticModel(nbots, bot_len, nsurv, nnew, 
                          nparents, mut, alphabet=alphabet, 
                          target=target)
 gen.configure_bot(weight_type=str)
-gen.add_loss(AlphaLoss)
+gen.add_loss(compute)
 # gen.mutate_nsurv()
 # gen.mutate_nnew()
 # gen.mutate_nparents()

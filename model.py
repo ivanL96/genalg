@@ -86,17 +86,17 @@ class GeneticModel(Mutation):
 
 
         self.stoppings = dict()
-        self.loss_object = None
+        self.loss_function = None
         print('Configuration: bot_len-{}, nbots-{}, nsurv-{}, nnew-{}, nparents-{}, mut-{}'
               .format(bot_len, nbots, nsurv, nnew, nparents, mut))
         super().__init__()
         
         
     # configuration methods=====================================================
-    def add_loss(self, loss_class):
-        self.loss_object = loss_class(target=self.target)
-        if not isinstance(self.loss_object, GeneticBaseLoss):
-            raise ValueError('Loss class must be set. Use gen.add_loss().')
+    def add_loss(self, loss_function):
+        self.loss_function = loss_function#(target=self.target)
+        # if not isinstance(self.loss_function, GeneticBaseLoss):
+        #     raise ValueError('Loss class must be set. Use gen.add_loss().')
         return self
     
     # def add_history(self, history_obj):
@@ -150,7 +150,7 @@ class GeneticModel(Mutation):
         return sample
         
     def __get_loss(self, bot):
-        return self.loss_object.compute(bot)
+        return self.loss_function(bot, self.target)#.compute(bot)
 
     def _check_stoppings(self):
         return (stop_val == self.history[stop_name][-1] for stop_name, stop_val in self.stoppings.items())
@@ -162,7 +162,7 @@ class GeneticModel(Mutation):
 
     def __new_bot(self):
         # creates a new bot for a new generation
-#         mutations = 0
+        # mutations = 0
         bot = []
         # parent_mut = []
         parents = [ self.next_population[random.randint(0,self.nsurv-1)] for parent in range(self.nparents) ]
@@ -171,14 +171,14 @@ class GeneticModel(Mutation):
 
             if random.uniform(0, 1) < self.mut:#self.__get_bot(parents[dominant], reserved=-1):
                 weight = self.__get_sample()
-#                 mutations += 1
+                # mutations += 1
             else:
                 weight = self.__get_bot(parents[dominant])[n]
-#                 parent_mut.append(self.__get_bot(parents[dominant], reserved=-1))
+                # parent_mut.append(self.__get_bot(parents[dominant], reserved=-1))
             bot.append(weight)
 
-#         bot.append(random.sample(parent_mut, 1)[0])
-#         self.history['pop_mutations'].append(mutations)
+        # bot.append(random.sample(parent_mut, 1)[0])
+        # self.history['pop_mutations'].append(mutations)
         return bot
 
     def __bot2text(self, bot):
@@ -191,9 +191,9 @@ class GeneticModel(Mutation):
         if self.weight_sample == None:
             raise ValueError('Bot weights must be configured before creating the population. Use gen.configure_bot().')
         
-        # creating population
-        self.population = [self.random_bot() for _ in range(self.nbots * n)]
-       
+        # creating 1D population
+        [self.population.extend(self.random_bot()) for _ in range(self.nbots * n)]
+
         for it in range(epochs):
             start = time.time()
             s, n, p = self.apply_mutation(self.mut)
@@ -203,7 +203,8 @@ class GeneticModel(Mutation):
             
 #             gen_mutation = []
 
-            vals = [self.__get_loss( self.__get_bot(bot) ) for bot in self.population]
+            # vals = [self.loss_function( bot, self.target ) for bot in self.population]
+            vals = backend.compute_loss(self.loss_function, self.population, self.bot_len, self.target)
 
 #                 gen_mutation.append(self.__get_bot(bot, reserved=-1))
 
@@ -213,6 +214,7 @@ class GeneticModel(Mutation):
             # visualization
             self.history['best'].append(sorted_vals[0])
             self.history['mean'].append(np.mean(vals))
+            self.history['best_worst'].append(abs(sorted_vals[0]-sorted_vals[-1]))
 #             self.history['pstdev'].append(statistics.pstdev(sorted_vals))
 #             self.history['pvariance'].append(statistics.pvariance(sorted_vals))
 #             self.history['stdev'].append(statistics.stdev(sorted_vals))
@@ -220,11 +222,10 @@ class GeneticModel(Mutation):
 #             self.history['gen_mut_history'].append(np.mean(gen_mutation))
 
             # get surv bots
-            # self.next_population = [ self.population[vals.index(sorted_vals[i])] for i in range(self.nsurv) ]
-            self.next_population = backend.create_next_population(self.nsurv, vals, sorted_vals, self.population)
+            self.next_population = [ self.population[vals.index(sorted_vals[i])] for i in range(self.nsurv) ]
+            # print(self.population[:10])
+            # self.next_population = backend.create_next_population(self.nsurv, vals, sorted_vals, self.population)
 
-
-            self.history['best_worst'].append(abs(sorted_vals[0]-sorted_vals[-1]))
             
             et = round(time.time()-start, 3)
             times.append(et)
