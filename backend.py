@@ -54,7 +54,7 @@ def create_new_bot(nnew, nsurv, nparents, bot_len, next_population, mut, weight_
     rand_range = np.array(weight_sample_enum[1])
     rand_sample_n = weight_sample_enum[2]
 
-    next_population = np.asarray(next_population)
+    next_population = np.asarray(next_population, dtype=np.int16) # type hardcoded!!!
     return jit_create_new_bot(nnew, nsurv, nparents, bot_len, mut, next_population, 
             rand_type, rand_range, rand_sample_n)
 
@@ -62,6 +62,7 @@ def create_new_bot(nnew, nsurv, nparents, bot_len, next_population, mut, weight_
 @njit(cache=True)
 def jit_create_new_bot(nnew, nsurv, nparents, bot_len, mut, next_population, rand_type, rand_range, rand_sample_n): 
     bot = []
+    # bot = []
     parents = [ next_population[random.randint(0,nsurv-1)] for parent in range(nparents) ]
     for n in range(bot_len):
         dominant = random.randint(0, nparents-1)
@@ -74,6 +75,7 @@ def jit_create_new_bot(nnew, nsurv, nparents, bot_len, mut, next_population, ran
                 weight = np.random.choice(rand_range, rand_sample_n)[0]
         else:
             weight = parents[dominant][n]
+        # np.append(bot, weight)
         bot.append(weight)
     return bot
 

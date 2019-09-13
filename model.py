@@ -5,6 +5,10 @@ import numpy as np
 from loss import GeneticBaseLoss
 import backend
 
+def print_time(*args):
+    print(*args)
+    return None
+
 
 class Mutation:
     def __init__(self):
@@ -108,7 +112,12 @@ class GeneticModel:
     #     return self
     
     def add_stopping(self, history_name, target_value):
-        self.stoppings[history_name] = target_value
+        if history_name in self.history:
+            self.stoppings[history_name] = target_value
+        else:
+            avail_h = ', '.join(self.history.keys())
+            msg = 'Cannot find history with name {}. Available histories are: {}'
+            raise ValueError(msg.format(history_name, avail_h))
         return self
             
     def configure_bot(self, weight_type=int, weight_range=None):
@@ -185,7 +194,7 @@ class GeneticModel:
     def __bot2text(self, bot):
         if self.alphabet:
             return ''.join(self.raw_alphabet[w] for w in bot)
-        return ''.join(str(w) for w in bot)
+        return '_'.join(str(w) for w in bot)
 
     def run(self, epochs, n=1, verbose=1):
         times=[]
@@ -235,7 +244,7 @@ class GeneticModel:
 
             worst_bot = self.next_population[-1] # for printing
 
-            # EXPENSIVE
+            # !!!!!!!!!!!!EXPENSIVE!!!!!!!!!!!!
             app_time = time.time()
             self.next_population += [self.__new_bot() for i in range(self.nnew)]
             # self.next_population += [backend.create_new_bot(
