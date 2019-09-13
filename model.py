@@ -43,7 +43,7 @@ class Mutation:
         return nsurv, nnew, nparents
 
 
-class GeneticModel(Mutation):
+class GeneticModel:
     def __init__(self, nbots, bot_len, nsurv, nnew, nparents, mut=0.1, reserved_weights=0, alphabet=None, target=None):
         self.population = []
         self.next_population = []
@@ -154,7 +154,7 @@ class GeneticModel(Mutation):
         return self.loss_function(bot, self.target)#.compute(bot)
 
     def _check_stoppings(self):
-        return (stop_val == self.history[stop_name][-1] for stop_name, stop_val in self.stoppings.items())
+        return (stop_val == self.history[stop_name][-1] if len(self.history[stop_name]) else False for stop_name, stop_val in self.stoppings.items())
     
     
     # main methods==============================================================
@@ -198,25 +198,25 @@ class GeneticModel(Mutation):
 
         for it in range(epochs):
             start = time.time()
-            s, n, p = self.apply_mutation(self.mut)
-            self.nsurv += s 
-            self.nnew += n
-            self.nparents += p
+            # s, n, p = self.apply_mutation(self.mut)
+            # self.nsurv += s 
+            # self.nnew += n
+            # self.nparents += p
             
             # gen_mutation = []
             loss_time = time.time()
-            vals = [self.loss_function( bot, self.target ) for bot in self.population]
-            print('loss___', time.time()-loss_time)
+            vals = [(bot, self.loss_function( bot, self.target )) for bot in self.population]
+            # print('loss___', time.time()-loss_time)
             # vals = backend.compute_loss(self.loss_function, self.population, self.bot_len, self.target)
             # gen_mutation.append(self.__get_bot(bot, reserved=-1))
 
             # the lower score is the best
             sloss_time = time.time()
-            sorted_vals = sorted(vals)
-            print('sloss__', time.time()-sloss_time)
+            sorted_vals = sorted(vals, key=lambda x: x[1])
+            # print('sloss__', time.time()-sloss_time)
 
             # visualization
-            # self.history['best'].append(sorted_vals[0])
+            self.history['best'].append(sorted_vals[0][1])
             # self.history['mean'].append(np.mean(vals))
             # self.history['best_worst'].append(abs(sorted_vals[0]-sorted_vals[-1]))
             
@@ -228,20 +228,21 @@ class GeneticModel(Mutation):
 
             # get surv bots
             npop_time = time.time()
-            self.next_population = [ self.population[vals.index(sorted_vals[i])] for i in range(self.nsurv) ]
-            print('npop___', time.time()-npop_time)
+            self.next_population = [el[0] for el in sorted_vals[:self.nsurv]]
+            # self.next_population = [ self.population[vals.index(sorted_vals[i])] for i in range(self.nsurv) ]
+            # print('npop___', time.time()-npop_time)
             # self.next_population = backend.create_next_population(self.nsurv, vals, sorted_vals, self.population)
 
             worst_bot = self.next_population[-1] # for printing
 
             # EXPENSIVE
             app_time = time.time()
-            # self.next_population += [self.__new_bot() for i in range(self.nnew)]
-            self.next_population += [backend.create_new_bot(
-                self.nnew, self.nsurv, self.nparents, self.bot_len, self.next_population, self.mut, self.weight_sample_enum
-            ) for i in range(self.nnew)]
+            self.next_population += [self.__new_bot() for i in range(self.nnew)]
+            # self.next_population += [backend.create_new_bot(
+                # self.nnew, self.nsurv, self.nparents, self.bot_len, self.next_population, self.mut, self.weight_sample_enum
+            # ) for i in range(self.nnew)]
             self.population = self.next_population
-            print('anpop__', time.time()-app_time)
+            # print('anpop__', time.time()-app_time)
 
 
             et = round(time.time()-start, 3)
@@ -257,3 +258,5 @@ class GeneticModel(Mutation):
 #             self.history['mut_history'].append(np.mean(self.history['pop_mutations']))
 #             self.history['pop_mutations'] = []
         print('mean generation time: {} sec'.format(np.mean(times)))
+
+
