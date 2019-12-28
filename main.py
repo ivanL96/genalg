@@ -17,7 +17,7 @@ import model
 
 def compute(weights, target=None):
     # return sum([abs(self.alphabet.find(self.target[i]) - self.alphabet.find(c)) for i,c in enumerate(weights)]) / len(self.target)**2
-    return sum([abs(target[i] - weights[i]) for i in range(len(weights)) ]) / len(target)**2
+    return sum([abs(target[i] - weights[i]) for i in range(len(weights)) ])**2
 
 
 alphabet = ' йцукенгшщзхъфывапролджэячсмитьбю0123456789!?+=-)(,.'
