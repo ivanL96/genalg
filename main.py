@@ -43,9 +43,6 @@ gen = model.GeneticModel(nbots, bot_len, nsurv, nnew,
                          target=target)
 gen.configure_bot(weight_type=str)
 gen.add_loss(compute)
-# gen.mutate_nsurv()
-# gen.mutate_nnew()
-# gen.mutate_nparents()
 gen.add_stopping('best', 0)
 
 gen.run(epochs=epochs, n=1, verbose=1)

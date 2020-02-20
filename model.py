@@ -1,6 +1,6 @@
     
-import time
-import random
+from time import perf_counter
+from random import random, uniform, randint, sample
 import numpy as np
 from loss import GeneticBaseLoss
 import backend
@@ -8,43 +8,6 @@ import backend
 def print_time(*args):
     print(*args)
     return None
-
-
-class Mutation:
-    def __init__(self):
-        self.muts = {
-            'mut_nsurv': False,
-            'mut_nnew': False,
-            'mut_nparents': False
-        }
-        self.mut_nsurv = False
-        self.mut_nnew = False
-        self.mut_nparents = False
-
-    def mutate_nsurv(self):
-        self.muts['mut_nsurv'] = True
-        return self
-
-    def mutate_nnew(self):
-        self.muts['mut_nnew'] = True
-        return self
-
-    def mutate_nparents(self):
-        self.muts['mut_nparents'] = True
-        return self
-
-    def apply_mutation(self, mut):
-        limit = int(mut * 10)
-        nsurv = 0
-        nnew = 0
-        nparents = 0
-        if self.muts['mut_nsurv']:
-            nsurv += random.randint(-limit, limit)
-        if self.muts['mut_nnew']:
-            nnew += random.randint(-limit, limit)
-        if self.muts['mut_nparents']:
-            nparents += random.randint(-limit, limit)
-        return nsurv, nnew, nparents
 
 
 class GeneticModel:
@@ -85,6 +48,7 @@ class GeneticModel:
         if alphabet:
             self.raw_alphabet = alphabet
             self.alphabet = [i for i, ch in enumerate(self.raw_alphabet)]
+            self.alphabet_len = len(self.alphabet)
             if target:
                 self.raw_target = target
                 self.target = [self.raw_alphabet.index(ch) for ch in target]
@@ -123,14 +87,14 @@ class GeneticModel:
     def configure_bot(self, weight_type=int, weight_range=None):
         """weight_type can be str, int, float"""
         if weight_type == int:
-            self.weight_sample = [random.randint, weight_range]
+            self.weight_sample = [randint, weight_range]
             self.weight_sample_enum = [0, weight_range, 0]
         elif weight_type == float:
             self.weight_sample = [np.random.uniform, weight_range]
             self.weight_sample_enum = [1, weight_range, 0]
         elif weight_type == str:
             if self.alphabet is not None:
-                self.weight_sample = [random.sample, self.alphabet, 1]
+                self.weight_sample = [sample, self.alphabet, 1]
                 self.weight_sample_enum = [2, self.alphabet, 1]        
             else:
                 raise ValueError('Weight type specified as string, but the alphabet not set.')
@@ -155,7 +119,14 @@ class GeneticModel:
             raise ValueError('The weight_range parameter at configure_bot() has invalid value.')
         if len(args) == 1:
             args = args[0]
-        sample = rand_func(*args)
+        
+        # optimization of rands
+        if self.weight_sample_enum[0] == 2: # i.e. random.sample
+            # sample = self.alphabet[int(random() * self.alphabet_len)]
+            sample = int(random() * self.alphabet_len)
+        else:
+            sample = rand_func(*args)
+
         sample = sample[0] if type(sample) == list else sample
         return sample
         
@@ -168,26 +139,26 @@ class GeneticModel:
     
     # main methods==============================================================
     def random_bot(self):
-        return [self.__get_sample() for el in range(self.bot_len)]# + [max(0.0001, random.uniform(-0.5, 0.5))]
+        return [self.__get_sample() for el in range(self.bot_len)]# + [max(0.0001, uniform(-0.5, 0.5))]
 
     def __new_bot(self):
         # creates a new bot for a new generation
         # mutations = 0
         bot = []
-        # parent_mut = []
-        parents = [ self.next_population[random.randint(0,self.nsurv-1)] for parent in range(self.nparents) ]
-        for n in range(self.bot_len):#len(main_parent)):
-            dominant = random.randint(0, self.nparents-1)
+        parents = [ self.next_population[int(random()*(self.nsurv-1))] for parent in range(self.nparents) ]
+        _nprts = self.nparents-1
+        _mut = self.mut
+        for n in range(self.bot_len):
+            # dominant = randint(0, _nprts)
+            dominant = int(random() * _nprts)
 
-            if random.uniform(0, 1) < self.mut:#self.__get_bot(parents[dominant], reserved=-1):
+            if uniform(0, 1) < _mut:
                 weight = self.__get_sample()
                 # mutations += 1
             else:
                 weight = self.__get_bot(parents[dominant])[n]
-                # parent_mut.append(self.__get_bot(parents[dominant], reserved=-1))
             bot.append(weight)
 
-        # bot.append(random.sample(parent_mut, 1)[0])
         # self.history['pop_mutations'].append(mutations)
         return bot
 
@@ -206,23 +177,19 @@ class GeneticModel:
         self.population = [self.random_bot() for _ in range(self.nbots * n)]
 
         for it in range(epochs):
-            start = time.time()
-            # s, n, p = self.apply_mutation(self.mut)
-            # self.nsurv += s 
-            # self.nnew += n
-            # self.nparents += p
+            start = perf_counter()
             
             # gen_mutation = []
-            loss_time = time.time()
+            loss_time = perf_counter()
             vals = [(bot, self.loss_function( bot, self.target )) for bot in self.population]
-            # print('loss___', time.time()-loss_time)
+            # print('loss___', perf_counter()-loss_time)
             # vals = backend.compute_loss(self.loss_function, self.population, self.bot_len, self.target)
             # gen_mutation.append(self.__get_bot(bot, reserved=-1))
 
             # the lower score is the best
-            sloss_time = time.time()
+            sloss_time = perf_counter()
             sorted_vals = sorted(vals, key=lambda x: x[1])
-            # print('sloss__', time.time()-sloss_time)
+            # print('sloss__', perf_counter()-sloss_time)
 
             # visualization
             self.history['best'].append(sorted_vals[0][1])
@@ -236,25 +203,25 @@ class GeneticModel:
             # self.history['gen_mut_history'].append(np.mean(gen_mutation))
 
             # get surv bots
-            npop_time = time.time()
+            npop_time = perf_counter()
             self.next_population = [el[0] for el in sorted_vals[:self.nsurv]]
             # self.next_population = [ self.population[vals.index(sorted_vals[i])] for i in range(self.nsurv) ]
-            # print('npop___', time.time()-npop_time)
+            # print('npop___', perf_counter()-npop_time)
             # self.next_population = backend.create_next_population(self.nsurv, vals, sorted_vals, self.population)
 
             worst_bot = self.next_population[-1] # for printing
 
             # !!!!!!!!!!!!EXPENSIVE!!!!!!!!!!!!
-            app_time = time.time()
+            app_time = perf_counter()
             self.next_population += [self.__new_bot() for i in range(self.nnew)]
             # self.next_population += [backend.create_new_bot(
                 # self.nnew, self.nsurv, self.nparents, self.bot_len, self.next_population, self.mut, self.weight_sample_enum
             # ) for i in range(self.nnew)]
             self.population = self.next_population
-            # print('anpop__', time.time()-app_time)
+            # print('anpop__', perf_counter()-app_time)
 
 
-            et = round(time.time()-start, 3)
+            et = round(perf_counter()-start, 3)
             times.append(et)
             if verbose == 1:
                 print(it, et, 
