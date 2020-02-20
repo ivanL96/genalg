@@ -51,8 +51,10 @@ class GeneticModel:
             self.alphabet_len = len(self.alphabet)
             if target:
                 self.raw_target = target
-                self.target = [self.raw_alphabet.index(ch) for ch in target]
-
+                try:
+                    self.target = [self.raw_alphabet.index(ch) for ch in target]
+                except ValueError:
+                    raise ValueError('The target has symbols not present in alphabet')
 
         self.stoppings = dict()
         self.loss_function = None
@@ -175,7 +177,8 @@ class GeneticModel:
         # creating 1D population
         # [self.population.extend(self.random_bot()) for _ in range(self.nbots * n)]
         self.population = [self.random_bot() for _ in range(self.nbots * n)]
-
+        _nsrv = self.nsurv
+        _nnw = self.nnew
         for it in range(epochs):
             start = perf_counter()
             
@@ -204,21 +207,21 @@ class GeneticModel:
 
             # get surv bots
             npop_time = perf_counter()
-            self.next_population = [el[0] for el in sorted_vals[:self.nsurv]]
-            # self.next_population = [ self.population[vals.index(sorted_vals[i])] for i in range(self.nsurv) ]
+            self.next_population = [el[0] for el in sorted_vals[:_nsrv]]
+            # self.next_population = [ self.population[vals.index(sorted_vals[i])] for i in range(_nsrv) ]
             # print('npop___', perf_counter()-npop_time)
-            # self.next_population = backend.create_next_population(self.nsurv, vals, sorted_vals, self.population)
+            # self.next_population = backend.create_next_population(_nsrv, vals, sorted_vals, self.population)
 
             worst_bot = self.next_population[-1] # for printing
 
             # !!!!!!!!!!!!EXPENSIVE!!!!!!!!!!!!
             app_time = perf_counter()
-            self.next_population += [self.__new_bot() for i in range(self.nnew)]
+            self.next_population += [self.__new_bot() for i in range(_nnw)]
             # self.next_population += [backend.create_new_bot(
-                # self.nnew, self.nsurv, self.nparents, self.bot_len, self.next_population, self.mut, self.weight_sample_enum
-            # ) for i in range(self.nnew)]
+                # _nnw, _nsrv, self.nparents, self.bot_len, self.next_population, self.mut, self.weight_sample_enum
+            # ) for i in range(_nnw)]
             self.population = self.next_population
-            # print('anpop__', perf_counter()-app_time)
+            print('anpop__', perf_counter()-app_time)
 
 
             et = round(perf_counter()-start, 3)
