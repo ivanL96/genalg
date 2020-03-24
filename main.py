@@ -1,19 +1,16 @@
 import numpy as np
-import random
+from random import random, sample
 import math
 import time
 import statistics
 import matplotlib.pyplot as plt
-import loss
-import model
+
+from ga.model import *
+from ga.preprocessing import *
+
 # import imagehash
 # random.seed(42)
 
-
-# class AlphaLoss(loss.GeneticBaseLoss):
-    # def __init__(self, alphabet, **kwargs):
-    #     self.alphabet = alphabet
-    #     super().__init__(**kwargs)
 
 def compute(weights, target=None):
     # return sum([abs(self.alphabet.find(self.target[i]) - self.alphabet.find(c)) for i,c in enumerate(weights)]) / len(self.target)**2
@@ -21,14 +18,13 @@ def compute(weights, target=None):
 
 
 alphabet = ' йцукенгшщзхъфывапролджэячсмитьбю0123456789!?+=-)(,.'
-alphabet = ''.join(random.sample(alphabet, len(alphabet) ))
+alphabet = ''.join(sample(alphabet, len(alphabet) ))
 print(alphabet)
 
 target = '''тест алгоритма'''
-import preprocessing
-ohe = preprocessing.to_ohe(target)
+ohe = to_ohe(target)
 print(ohe)
-print(preprocessing.normalize(ohe))
+print(normalize(ohe))
 
 bot_len = len(target)
 nbots = 5000
@@ -38,9 +34,9 @@ mut = 0.2
 nparents = min(100, nsurv)
 epochs = 1000
 
-gen = model.GeneticModel(nbots, bot_len, nsurv, nnew, 
-                         nparents, mut, alphabet=alphabet, 
-                         target=target)
+gen = GeneticModel(nbots, bot_len, nsurv, nnew, 
+                    nparents, mut, alphabet=alphabet, 
+                    target=target)
 gen.configure_bot(weight_type=str)
 gen.add_loss(compute)
 gen.add_stopping('best', 0)

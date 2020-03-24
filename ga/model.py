@@ -2,8 +2,9 @@
 from time import perf_counter
 from random import random, uniform, randint, sample
 import numpy as np
-from loss import GeneticBaseLoss
-import backend
+
+from . import backend
+
 
 def print_time(*args):
     print(*args)
@@ -221,14 +222,16 @@ class GeneticModel:
                 # _nnw, _nsrv, self.nparents, self.bot_len, self.next_population, self.mut, self.weight_sample_enum
             # ) for i in range(_nnw)]
             self.population = self.next_population
-            print('anpop__', perf_counter()-app_time)
+            # print('anpop__', perf_counter()-app_time)
 
 
             et = round(perf_counter()-start, 3)
             times.append(et)
             if verbose == 1:
-                print(it, et, 
-                    self.__bot2text(self.next_population[0]), self.__bot2text(worst_bot))
+                print(it, 
+                    self.__bot2text(self.next_population[0]),
+                    # self.__bot2text(worst_bot),
+                    et)
             
             if any(self._check_stoppings()):
                 break
