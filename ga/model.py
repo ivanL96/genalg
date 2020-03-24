@@ -39,9 +39,7 @@ class GeneticModel:
             'stdev': [],
             'variance': [],
             
-            'best_worst': [],
-            
-#             'gen_mut_history': []
+            'best_worst': [],            
         }
 
         # alphabet is a sequence of symbols that bots takes for setting its weights. 
@@ -66,17 +64,8 @@ class GeneticModel:
         
     # configuration methods=====================================================
     def add_loss(self, loss_function):
-        self.loss_function = loss_function#(target=self.target)
-        # if not isinstance(self.loss_function, GeneticBaseLoss):
-        #     raise ValueError('Loss class must be set. Use gen.add_loss().')
+        self.loss_function = loss_function
         return self
-    
-    # def add_history(self, history_obj):
-    #     if isinstance(history_obj, History):
-    #         self.history.update(history_obj.get_history())
-    #     else:
-    #         raise TypeError('Cannot use {} type as history object.'.format(type(history_obj)))
-    #     return self
     
     def add_stopping(self, history_name, target_value):
         if history_name in self.history:

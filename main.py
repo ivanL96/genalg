@@ -18,13 +18,10 @@ def compute(weights, target=None):
 
 
 alphabet = ' йцукенгшщзхъфывапролджэячсмитьбю0123456789!?+=-)(,.'
-alphabet = ''.join(sample(alphabet, len(alphabet) ))
+alphabet = ''.join(sample(alphabet, len(alphabet) ))  # randomize
 print(alphabet)
 
 target = '''тест алгоритма'''
-ohe = to_ohe(target)
-print(ohe)
-print(normalize(ohe))
 
 bot_len = len(target)
 nbots = 5000
@@ -35,8 +32,8 @@ nparents = min(100, nsurv)
 epochs = 1000
 
 gen = GeneticModel(nbots, bot_len, nsurv, nnew, 
-                    nparents, mut, alphabet=alphabet, 
-                    target=target)
+                   nparents, mut, alphabet=alphabet, 
+                   target=target)
 gen.configure_bot(weight_type=str)
 gen.add_loss(compute)
 gen.add_stopping('best', 0)
