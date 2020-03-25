@@ -165,30 +165,20 @@ class GeneticModel:
             raise ValueError('Bot weights must be configured before creating the population. Use gen.configure_bot().')
         
         # creating 1D population
-        # [self.population.extend(self.random_bot()) for _ in range(self.nbots * n)]
         self.population = [self.random_bot() for _ in range(self.nbots * n)]
         _nsrv = self.nsurv
         _nnw = self.nnew
         for it in range(epochs):
             start = perf_counter()
             
-            # gen_mutation = []
-            loss_time = perf_counter()
             vals = [(bot, self.loss_function( bot, self.target )) for bot in self.population]
-            # print('loss___', perf_counter()-loss_time)
-            # vals = backend.compute_loss(self.loss_function, self.population, self.bot_len, self.target)
-            # gen_mutation.append(self.__get_bot(bot, reserved=-1))
 
-            # the lower score is the best
-            sloss_time = perf_counter()
             sorted_vals = sorted(vals, key=lambda x: x[1])
-            # print('sloss__', perf_counter()-sloss_time)
 
             # visualization
             self.history['best'].append(sorted_vals[0][1])
             # self.history['mean'].append(np.mean(vals))
             # self.history['best_worst'].append(abs(sorted_vals[0]-sorted_vals[-1]))
-            
             # self.history['pstdev'].append(statistics.pstdev(sorted_vals))
             # self.history['pvariance'].append(statistics.pvariance(sorted_vals))
             # self.history['stdev'].append(statistics.stdev(sorted_vals))
@@ -198,20 +188,13 @@ class GeneticModel:
             # get surv bots
             npop_time = perf_counter()
             self.next_population = [el[0] for el in sorted_vals[:_nsrv]]
-            # self.next_population = [ self.population[vals.index(sorted_vals[i])] for i in range(_nsrv) ]
-            # print('npop___', perf_counter()-npop_time)
-            # self.next_population = backend.create_next_population(_nsrv, vals, sorted_vals, self.population)
-
+            
             worst_bot = self.next_population[-1] # for printing
 
             # !!!!!!!!!!!!EXPENSIVE!!!!!!!!!!!!
             app_time = perf_counter()
             self.next_population += [self.__new_bot() for i in range(_nnw)]
-            # self.next_population += [backend.create_new_bot(
-                # _nnw, _nsrv, self.nparents, self.bot_len, self.next_population, self.mut, self.weight_sample_enum
-            # ) for i in range(_nnw)]
             self.population = self.next_population
-            # print('anpop__', perf_counter()-app_time)
 
 
             et = round(perf_counter()-start, 3)
@@ -224,10 +207,6 @@ class GeneticModel:
             
             if any(self._check_stoppings()):
                 break
-            
-            # population mean mutations
-#             self.history['mut_history'].append(np.mean(self.history['pop_mutations']))
-#             self.history['pop_mutations'] = []
-        print('mean generation time: {} sec'.format(np.mean(times)))
 
+        print('mean generation time: {} sec'.format(np.mean(times)))
 
