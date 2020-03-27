@@ -3,6 +3,8 @@ from time import perf_counter
 from random import random, uniform, randint, sample
 import numpy as np
 
+from functools import lru_cache
+
 from . import backend
 
 
@@ -11,7 +13,7 @@ def print_time(*args):
     return None
 
 
-class GeneticModel:
+class ModelConfiguration:
     def __init__(self, nbots, bot_len, nsurv, nnew, nparents, mut=0.1, reserved_weights=0, alphabet=None, target=None):
         self.population = []
         self.next_population = []
@@ -59,12 +61,12 @@ class GeneticModel:
         self.loss_function = None
         print('Configuration: bot_len-{}, nbots-{}, nsurv-{}, nnew-{}, nparents-{}, mut-{}'
               .format(bot_len, nbots, nsurv, nnew, nparents, mut))
-        super().__init__()
-        
-        
+
     # configuration methods=====================================================
     def add_loss(self, loss_function):
         self.loss_function = loss_function
+        if not callable(self.loss_function):
+            raise ValueError('loss_function parameter must be callable.')
         return self
     
     def add_stopping(self, history_name, target_value):
@@ -93,15 +95,17 @@ class GeneticModel:
         else:
             raise TypeError('Unknown weight type. Use str, int or float.')
         return self
-    
+
+
+class GeneticModel(ModelConfiguration):
+    def __init__(self, nbots, bot_len, nsurv, nnew, nparents, mut=0.1, reserved_weights=0, alphabet=None, target=None):
+        super().__init__(nbots, bot_len, nsurv, nnew, nparents, mut, reserved_weights, alphabet, target)
+        
     
     # auxiliary methods========================================================= 
-    def __get_bot(self, bot, all_weights=False, reserved=0):
+    def __get_bot(self, bot):
         if self.reserved_weights:
-            if reserved != 0:
-                return bot[reserved]
-            if not all_weights:
-                return bot[:-self.reserved_weights]
+            return bot[:-self.reserved_weights]
         return bot
     
     def __get_sample(self):
@@ -122,13 +126,17 @@ class GeneticModel:
         sample = sample[0] if type(sample) == list else sample
         return sample
         
+    @lru_cache(maxsize=4096)
     def __get_loss(self, bot):
-        return self.loss_function(bot, self.target)#.compute(bot)
+        return self.loss_function(bot, self.target)
 
     def _check_stoppings(self):
-        return (stop_val == self.history[stop_name][-1] if len(self.history[stop_name]) else False for stop_name, stop_val in self.stoppings.items())
+        result=[]
+        for stop_name, stop_val in self.stoppings.items():
+            result.append(stop_val == self.history[stop_name][-1]) if len(self.history[stop_name]) else False
+        return result
     
-    
+
     # main methods==============================================================
     def random_bot(self):
         return [self.__get_sample() for el in range(self.bot_len)]# + [max(0.0001, uniform(-0.5, 0.5))]
@@ -141,7 +149,6 @@ class GeneticModel:
         _nprts = self.nparents-1
         _mut = self.mut
         for n in range(self.bot_len):
-            # dominant = randint(0, _nprts)
             dominant = int(random() * _nprts)
 
             if uniform(0, 1) < _mut:
@@ -188,7 +195,7 @@ class GeneticModel:
             # get surv bots
             npop_time = perf_counter()
             self.next_population = [el[0] for el in sorted_vals[:_nsrv]]
-            
+
             worst_bot = self.next_population[-1] # for printing
 
             # !!!!!!!!!!!!EXPENSIVE!!!!!!!!!!!!
@@ -207,6 +214,6 @@ class GeneticModel:
             
             if any(self._check_stoppings()):
                 break
-
+            
         print('mean generation time: {} sec'.format(np.mean(times)))
 
