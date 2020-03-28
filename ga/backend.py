@@ -5,7 +5,9 @@ from os.path import samefile
 import numba
 import numpy as np
 from numba import cuda, jit, njit
-from numba.types import List, byte, float32, float64, int32, int64, pyfunc_type
+from numba.types import List, byte, float32, float64, int32, int64, pyfunc_type, f8
+
+# NUMBA WRAPPERS
 
 # @jit(nopython=True)
 # def monte_carlo_pi(nsamples):
@@ -27,8 +29,6 @@ def create_next_population(n, vals, sorted_vals, population):
     for i in range(n):
         out.append(population[vals.index(sorted_vals[i])])
     return out
-
-
 
 def compute_loss(loss_function, p, bot_len, target=[]):
     # @njit('f8(f8)')
@@ -83,7 +83,20 @@ def jit_create_new_bot(nnew, nsurv, nparents, bot_len, mut, next_population, ran
 
 
 def run_epoch(nbots, nsurv, nnew, mut, weight_sample, bot_len):
-    pass
+    vals = [(bot, _lossf( bot, _target )) for bot in self.population]
+
+    sorted_vals = sorted(vals, key=lambda x: x[1])
+    best_loss_res = sorted_vals[0][1]
+
+    self.history['best'].append(best_loss_res)
+
+    # get surv bots
+    self.next_population = [el[0] for el in sorted_vals[:_nsrv]]
+
+    # worst_bot = self.next_population[-1] # for printing
+
+    self.next_population += [_newbot() for i in range(_nnw)]
+    self.population = self.next_population
 
 
 

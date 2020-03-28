@@ -1,9 +1,9 @@
-    
-from time import perf_counter
+from time import perf_counter    
+
 from random import seed, random, uniform, randint, sample
 import numpy as np
 
-seed(0)
+# seed(0)
 
 from functools import lru_cache
 
@@ -17,6 +17,9 @@ def print_time(*args):
 
 def _randint(a,b):
     return int(max(a, random()*b))
+
+def _randrange(a,b):
+    return max(a, random()*b)
 
 
 class ModelConfiguration:
@@ -56,7 +59,7 @@ class ModelConfiguration:
         # If None - consider as sequence of real numbers
         if alphabet:
             self.raw_alphabet = alphabet
-            self.alphabet = [i for i, ch in enumerate(self.raw_alphabet)]
+            self.alphabet = [i for i, ch in enumerate(self.raw_alphabet)]  # indexing the alphabet
             self.alphabet_len = len(self.alphabet)
             if target:
                 self.raw_target = target
@@ -88,20 +91,24 @@ class ModelConfiguration:
             
     def configure_bot(self, weight_type=int, weight_range=(0,1)):
         """weight_type can be str, int, float"""
+
+        # weight_sample_enum: (ENUM_TYPE, (RANGE, OTHER_ARGS))
         if weight_type == int:
-            self.weight_sample = (_randint, weight_range)
+            self.weight_sample = (randint, (weight_range,))
             self.weight_sample_enum = (0, weight_range, 0)
         elif weight_type == float:
-            self.weight_sample = (np.random.uniform, weight_range)
+            # self.weight_sample = (np.random.uniform, (weight_range,))
+            self.weight_sample = (_randrange, (weight_range,))
             self.weight_sample_enum = (1, weight_range, 0)
         elif weight_type == str:
             if self.alphabet is not None:
-                self.weight_sample = (sample, self.alphabet, 1)
+                self.weight_sample = (sample, (self.alphabet, 1))
                 self.weight_sample_enum = (2, self.alphabet, 1)        
             else:
                 raise ValueError('Weight type specified as string, but the alphabet not set.')
         else:
             raise TypeError('Unknown weight type. Use str, int or float.')
+
         return self
 
 
@@ -118,7 +125,7 @@ class GeneticModel(ModelConfiguration):
     
     def __get_sample(self):
         rand_func = self.weight_sample[0]
-        args = self.weight_sample[1:]
+        args = self.weight_sample[1]
         if args[0] is None:
             raise ValueError('The weight_range parameter at configure_bot() has invalid value.')
         if len(args) == 1:
@@ -126,7 +133,6 @@ class GeneticModel(ModelConfiguration):
         
         # optimization of rands
         if self.weight_sample_enum[0] == 2: # i.e. random.sample
-            # sample = self.alphabet[int(random() * self.alphabet_len)]
             sample = int(random() * self.alphabet_len)
         else:
             sample = rand_func(*args)
@@ -154,7 +160,6 @@ class GeneticModel(ModelConfiguration):
 
     def __new_bot(self):
         # creates a new bot for a new generation
-        # mutations = 0
         bot = []
         parents = [ self.next_population[int(random()*(self.nsurv-1))] for parent in range(self.nparents) ]
         _nprts = self.nparents-1
@@ -168,16 +173,18 @@ class GeneticModel(ModelConfiguration):
                 weight = self.__get_bot(parents[dominant])[n]
             bot.append(weight)
 
-        # self.history['pop_mutations'].append(mutations)
         return bot
 
-    def __bot2text(self, bot):
+    def __bot2text(self, bot, precision=5):
         if self.alphabet:
             return ''.join(self.raw_alphabet[w] for w in bot)
-        return '_'.join(str(w) for w in bot)
+        return '_'.join(f'{w:.{precision}f}' for w in bot)
 
     def run(self, epochs, init_multiplier=1, verbose=1):
         times=[]
+        if not init_multiplier or not isinstance(init_multiplier, int) or init_multiplier<0:
+            raise ValueError(f'Cannot use {init_multiplier} as population multiplier. Valid type is integer and value must be positive.')
+
         if self.weight_sample == None:
             raise ValueError('Bot weights must be configured before creating the population. Use gen.configure_bot().')
         
@@ -185,10 +192,13 @@ class GeneticModel(ModelConfiguration):
         self.population = [self.random_bot() for _ in range(self.nbots * init_multiplier)]
         _nsrv = self.nsurv
         _nnw = self.nnew
+        _lossf = self.loss_function
+        _target = self.target
+        _newbot = self.__new_bot
         for it in range(epochs):
             start = perf_counter()
             
-            vals = [(bot, self.loss_function( bot, self.target )) for bot in self.population]
+            vals = [(bot, _lossf( bot, _target )) for bot in self.population]
 
             sorted_vals = sorted(vals, key=lambda x: x[1])
             best_loss_res = sorted_vals[0][1]
@@ -208,15 +218,15 @@ class GeneticModel(ModelConfiguration):
             worst_bot = self.next_population[-1] # for printing
 
             # !!!!!!!!!!!!EXPENSIVE!!!!!!!!!!!!
-            app_time = perf_counter()
-            self.next_population += [self.__new_bot() for i in range(_nnw)]
+            # app_time = perf_counter()
+            self.next_population += [_newbot() for i in range(_nnw)]
             self.population = self.next_population
 
 
             et = round(perf_counter()-start, 3)
             times.append(et)
             if verbose == 1:
-                print(it, 'loss: ', best_loss_res, 'bot: ', 
+                print(it, f'loss: {best_loss_res:.6f}', 'bot: ', 
                     self.__bot2text(self.next_population[0]),
                     # self.__bot2text(worst_bot),
                     et)
