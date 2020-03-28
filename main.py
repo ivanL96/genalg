@@ -9,7 +9,6 @@ from ga.model import *
 from ga.preprocessing import *
 
 # import imagehash
-# random.seed(42)
 
 
 def compute(weights, target=None):
@@ -38,4 +37,4 @@ gen.configure_bot(weight_type=str)
 gen.add_loss(compute)
 gen.add_stopping('best', 0)
 
-gen.run(epochs=epochs, n=1, verbose=1)
+gen.run(epochs=epochs, init_multiplier=1, verbose=1)

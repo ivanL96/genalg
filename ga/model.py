@@ -1,7 +1,9 @@
     
 from time import perf_counter
-from random import random, uniform, randint, sample
+from random import seed, random, uniform, randint, sample
 import numpy as np
+
+seed(0)
 
 from functools import lru_cache
 
@@ -11,6 +13,10 @@ from . import backend
 def print_time(*args):
     print(*args)
     return None
+
+
+def _randint(a,b):
+    return int(max(a, random()*b))
 
 
 class ModelConfiguration:
@@ -44,6 +50,8 @@ class ModelConfiguration:
             'best_worst': [],            
         }
 
+        self.target = target
+        self.alphabet = None
         # alphabet is a sequence of symbols that bots takes for setting its weights. 
         # If None - consider as sequence of real numbers
         if alphabet:
@@ -78,18 +86,18 @@ class ModelConfiguration:
             raise ValueError(msg.format(history_name, avail_h))
         return self
             
-    def configure_bot(self, weight_type=int, weight_range=None):
+    def configure_bot(self, weight_type=int, weight_range=(0,1)):
         """weight_type can be str, int, float"""
         if weight_type == int:
-            self.weight_sample = [randint, weight_range]
-            self.weight_sample_enum = [0, weight_range, 0]
+            self.weight_sample = (_randint, weight_range)
+            self.weight_sample_enum = (0, weight_range, 0)
         elif weight_type == float:
-            self.weight_sample = [np.random.uniform, weight_range]
-            self.weight_sample_enum = [1, weight_range, 0]
+            self.weight_sample = (np.random.uniform, weight_range)
+            self.weight_sample_enum = (1, weight_range, 0)
         elif weight_type == str:
             if self.alphabet is not None:
-                self.weight_sample = [sample, self.alphabet, 1]
-                self.weight_sample_enum = [2, self.alphabet, 1]        
+                self.weight_sample = (sample, self.alphabet, 1)
+                self.weight_sample_enum = (2, self.alphabet, 1)        
             else:
                 raise ValueError('Weight type specified as string, but the alphabet not set.')
         else:
@@ -133,13 +141,16 @@ class GeneticModel(ModelConfiguration):
     def _check_stoppings(self):
         result=[]
         for stop_name, stop_val in self.stoppings.items():
-            result.append(stop_val == self.history[stop_name][-1]) if len(self.history[stop_name]) else False
+            if len(self.history[stop_name]):
+                result.append(stop_val == self.history[stop_name][-1])
+            else:
+                result.append(False)
         return result
     
 
     # main methods==============================================================
     def random_bot(self):
-        return [self.__get_sample() for el in range(self.bot_len)]# + [max(0.0001, uniform(-0.5, 0.5))]
+        return [self.__get_sample() for el in range(self.bot_len)]
 
     def __new_bot(self):
         # creates a new bot for a new generation
@@ -151,9 +162,8 @@ class GeneticModel(ModelConfiguration):
         for n in range(self.bot_len):
             dominant = int(random() * _nprts)
 
-            if uniform(0, 1) < _mut:
+            if uniform(0, 1) < _mut:  # apply mutation to current weight
                 weight = self.__get_sample()
-                # mutations += 1
             else:
                 weight = self.__get_bot(parents[dominant])[n]
             bot.append(weight)
@@ -166,13 +176,13 @@ class GeneticModel(ModelConfiguration):
             return ''.join(self.raw_alphabet[w] for w in bot)
         return '_'.join(str(w) for w in bot)
 
-    def run(self, epochs, n=1, verbose=1):
+    def run(self, epochs, init_multiplier=1, verbose=1):
         times=[]
         if self.weight_sample == None:
             raise ValueError('Bot weights must be configured before creating the population. Use gen.configure_bot().')
         
         # creating 1D population
-        self.population = [self.random_bot() for _ in range(self.nbots * n)]
+        self.population = [self.random_bot() for _ in range(self.nbots * init_multiplier)]
         _nsrv = self.nsurv
         _nnw = self.nnew
         for it in range(epochs):
@@ -181,9 +191,9 @@ class GeneticModel(ModelConfiguration):
             vals = [(bot, self.loss_function( bot, self.target )) for bot in self.population]
 
             sorted_vals = sorted(vals, key=lambda x: x[1])
-
+            best_loss_res = sorted_vals[0][1]
             # visualization
-            self.history['best'].append(sorted_vals[0][1])
+            self.history['best'].append(best_loss_res)
             # self.history['mean'].append(np.mean(vals))
             # self.history['best_worst'].append(abs(sorted_vals[0]-sorted_vals[-1]))
             # self.history['pstdev'].append(statistics.pstdev(sorted_vals))
@@ -193,7 +203,6 @@ class GeneticModel(ModelConfiguration):
             # self.history['gen_mut_history'].append(np.mean(gen_mutation))
 
             # get surv bots
-            npop_time = perf_counter()
             self.next_population = [el[0] for el in sorted_vals[:_nsrv]]
 
             worst_bot = self.next_population[-1] # for printing
@@ -207,7 +216,7 @@ class GeneticModel(ModelConfiguration):
             et = round(perf_counter()-start, 3)
             times.append(et)
             if verbose == 1:
-                print(it, 
+                print(it, 'loss: ', best_loss_res, 'bot: ', 
                     self.__bot2text(self.next_population[0]),
                     # self.__bot2text(worst_bot),
                     et)
