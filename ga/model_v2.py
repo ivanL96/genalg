@@ -3,7 +3,7 @@ import random
 from random import shuffle
 import itertools, time
 from numba import njit, jit, vectorize
-
+from matplotlib.pyplot import plot
 np.random.seed(0)
 random.seed(0)
 
@@ -45,16 +45,19 @@ if __name__ == '__main__':
     w = 10
     p_size = 5000
     survived = 100
-    mutation = 0.1
+    mutation = 0.15
     pop = init_population(p_size, w)
     # warm up
     # generate_next_pop(np.random.rand(survived, w), w, p_size, mutation=mutation)
     start = time.time()
-    epochs = 20000
+    epochs = 100
+    loss_history = []
     for e in range(epochs):
         ranked_pop = calculate_loss(pop, loss)
-        print(e, ranked_pop[0][0])
-        # min_loss = ranked_pop[0][0]
+
+        min_loss = ranked_pop[0][0]
+        print(e, min_loss)
+        loss_history.append(min_loss)
         # survived = survived+10 if e % 100 == 0 else survived
         surv_units = get_top_n(ranked_pop, survived=survived)
         newpop = generate_next_pop(surv_units, w, p_size, mutation=mutation)
@@ -64,3 +67,5 @@ if __name__ == '__main__':
     end = time.time()
     print(pop[0])
     print('total time',end-start)
+
+    plot(loss_history)
