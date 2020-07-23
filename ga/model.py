@@ -7,8 +7,6 @@ import numpy as np
 
 from functools import lru_cache
 
-from . import backend
-
 
 def print_time(*args):
     print(*args)
